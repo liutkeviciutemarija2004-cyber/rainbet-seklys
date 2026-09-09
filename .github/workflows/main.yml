@@ -1,4 +1,4 @@
-name: Gamyba (.APK)
+name: Build (.APK)
 
 on:
   push:
@@ -7,36 +7,42 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Paruosti Python aplinka
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Idiegti priklausomybes ir Buildozer
+    - name: Install Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
         pip install --upgrade pip
-        pip install buildozer cython
+        pip install "buildozer==1.5.0" cython
 
-    - name: Sukurti Buildozer nustatymus automatiskai
+    - name: Configure Buildozer
       run: |
         buildozer init
         sed -i 's/^title =.*/title = Rainbet Seklys/' buildozer.spec
         sed -i 's/^package.name =.*/package.name = rainbetseklys/' buildozer.spec
         sed -i 's/^requirements =.*/requirements = python3/' buildozer.spec
+        sed -i 's/^#android.accept_sdk_license =.*/android.accept_sdk_license = True/' buildozer.spec
 
-    - name: APK Gamyba (Gali uztrikti apie 10 min)
+    - name: Build APK
       run: buildozer android debug
 
-    - name: Ikelti paruoshta APK faila atsisiuntimui
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Rainbet-Seklys-Programele
         path: bin/*.apk
-        
