@@ -1,50 +1,76 @@
-name: Build APK
+import time
+import requests
+from datetime import datetime
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+CHANNELS = {
+    "Rainbet Telegram": "https://t.me",
+    "Rainbet X (Twitter)": "https://rss.app",
+    "Rainbet Discord": "https://discord.com"
+}
 
-jobs:
-  build:
-    runs-on: ubuntu-22.04
+processed_items = set()
 
-    steps:
-    - uses: actions/checkout@v4
+print("=" * 65)
+print("🚀 MULTI-PLATFORM RAINBET MONITOR ACTIVE (24/7)")
+print("Monitoring: Telegram, X (Twitter), Discord")
+print("=" * 65)
 
-    - name: Set up Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
+def get_category_and_color(text):
+    t = text.lower()
+    
+    requires_deposit = True
+    if "no deposit" in t or "be depozito" in t or "free claim" in t or "no-dep" in t or "free balance" in t:
+        requires_deposit = False
+        
+    new_users = False
+    if "new user" in t or "new players" in t or "naujiems" in t or "welcome" in t or "sign up" in t:
+        new_users = True
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+    if not requires_deposit and new_users:
+        return "NEMOKAMI SUKIMAI BE DEPOZITO NAUJIEMS NARIAMS", "\033[91m"
+    elif not requires_deposit and not new_users:
+        return "NEMOKAMI SUKIMAI BE DEPOZITO ESAMIEMS NARIAMS", "\033[95m"
+    elif requires_deposit and new_users:
+        return "NEMOKAMI SUKIMAI REIKALAUJANTIS DEPOZITO NAUJIEMS NARIAMS", "\033[92m"
+    else:
+        return "NEMOKAMI SUKIMAI REIKALAUJANTIS DEPOZITO ESAMIEMS NARIAMS", "\033[93m"
 
-    - name: Install Tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
-        pip install "buildozer==1.5.0" cython
+def check_sources():
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    
+    for source, url in CHANNELS.items():
+        try:
+            if "example_" in url:
+                simulate_live_stream(source, timestamp)
+                continue
+                
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                text = response.text
+                if any(keyword in text.lower() for keyword in ["code", "promo", "drop", "free"]):
+                    category, color_code = get_category_and_color(text)
+                    print(f"[{timestamp}] 🚨 NEW POST DETECTED ON {source}!")
+                    print(f"CATEGORY: {color_code}{category}\033[0m")
+                    print("-" * 65)
+        except Exception:
+            pass
 
-    - name: Create Configuration
-      run: |
-        buildozer init
-        sed -i 's/^title =.*/title = Rainbet Seklys/' buildozer.spec
-        sed -i 's/^package.name =.*/package.name = rainbetseklys/' buildozer.spec
-        sed -i 's/^requirements =.*/requirements = python3/' buildozer.spec
-        sed -i 's/^#android.accept_sdk_license =.*/android.accept_sdk_license = True/' buildozer.spec
-        sed -i 's/^#android.api =.*/android.api = 33/' buildozer.spec
-        sed -i 's/^#android.minapi =.*/android.minapi = 21/' buildozer.spec
-        sed -i 's/^#android.ndk_api =.*/android.ndk_api = 21/' buildozer.spec
+def simulate_live_stream(source, timestamp):
+    if int(time.time()) % 15 == 0:
+        if source == "Rainbet Telegram":
+            text = "New Promo Drop for active players! Use code RAIN-TELE-FREE. No deposit required!"
+        elif source == "Rainbet X (Twitter)":
+            text = "Welcome Pack updated! Deposit 10$ and use bonus code 'WELCOME-TWITTER' to get 100 Free Spins on sign up."
+        else:
+            text = "Discord Exclusive Giveaway! Wager 50$ this week and claim code 'DISC-RELOAD-99'."
+            
+        category, color_code = get_category_and_color(text)
+        print(f"[{timestamp}] 🚨 NEW POST DETECTED ({source}):")
+        print(f"Content: {text}")
+        print(f"CATEGORY: {color_code}{category}\033[0m")
+        print("-" * 65)
 
-    - name: Build with Buildozer
-      run: buildozer android debug
-
-    - name: Upload Package
-      uses: actions/upload-artifact@v4
-      with:
-        name: Rainbet-Seklys-Programele
-        path: bin/*.apk
+if __name__ == "__main__":
+    while True:
+        check_sources()
+        time.sleep(10)
